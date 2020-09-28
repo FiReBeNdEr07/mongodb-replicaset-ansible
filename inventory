@@ -1,0 +1,4 @@
+[mongo]
+mongo1 ansible_ssh_user=ubuntu
+mongo2 ansible_ssh_user=ubuntu
+mongo3 ansible_ssh_user=ubuntu

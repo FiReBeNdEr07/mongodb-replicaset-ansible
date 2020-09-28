@@ -1,0 +1,5 @@
+- name: Stop Mongo service
+  hosts: mongo
+  tasks:
+    - name : Initiating the replica set
+      shell : sudo systemctl stop mongod.service && sudo umount /data

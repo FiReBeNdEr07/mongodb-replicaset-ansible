@@ -1,0 +1,86 @@
+- name: Run tasks on all hosts
+  hosts: mongo
+  tasks:
+    - name: Copy data.sh(Used for mounting the EBS) script to remote hosts
+      copy:
+        src: data.sh
+        dest: /var/opt/data.sh
+    - name: Copy Mongo Congiurations to remote hosts
+      copy:
+        src: mongod.conf
+        dest: /etc/mongod.conf
+    - name: Copy Mongo Client CA PEM to remote hosts
+      copy:
+        src: keys/ca.pem
+        dest: /etc/ssl/ca.pem
+    - name: Copy hosts script to remote hosts
+      copy:
+        src: hosts
+        dest: /etc/hosts
+
+#Copying file's Specific to mongo1        
+- name: Run tasks on all mongo1
+  hosts: mongo1
+  tasks:
+    - name: Copy mongo-rs.js script to remote hosts
+      copy:
+        src: mongo-rs.js
+        dest: /home/ubuntu/mongo-rs.js
+    - name: Copy Mongo mongo1 OPENSSL PEM to remote hosts
+      copy:
+        src: keys/mongo1.pem
+        dest: /etc/ssl/mongodb.pem
+    - name: Copy Mongo Client OPENSSL PEM to remote hosts
+      copy:
+        src: keys/client.pem
+        dest: /etc/ssl/client.pem
+
+#Copying file's Specific to mongo1        
+- name: Run tasks on all mongo2
+  hosts: mongo2
+  tasks:
+    - name: Copy Mongo mongo2 OPENSSL PEM to remote hosts
+      copy:
+        src: keys/mongo2.pem
+        dest: /etc/ssl/mongodb.pem
+
+
+#Copying file's Specific to mongo1        
+- name: Run tasks on all mongo3
+  hosts: mongo3
+  tasks:
+    - name: Copy Mongo mongo3 OPENSSL PEM to remote hosts
+      copy:
+        src: keys/mongo3.pem
+        dest: /etc/ssl/mongodb.pem
+
+
+# Installing and starting MongoDB
+- hosts: mongo
+  become: yes
+  tasks:
+   - name: Add Mongo key
+     apt_key:
+      keyserver: keyserver.ubuntu.com
+      id: 9DA31620334BD75D9DCB49F368818C72E52529D4
+   - name: Add nodejs apt repository
+     apt_repository:
+      repo: deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse
+      state: present
+      filename: mongo
+   - name: Install Mongo
+     apt:
+      name: mongodb-org
+      update_cache: no
+   - name : Mount EBS to /data, create /data/mongodb and change ownership to mongodb user(we are storing data directly to EBS)
+     shell : sudo bash /var/opt/data.sh && mkdir /data/mongodb && sudo chown mongodb /data/mongodb
+   - name: Start and enable mongod service
+     become: yes
+     systemd: name=mongod state=restarted enabled=yes
+
+
+- name: Initiate the replica set
+  hosts: mongo1
+  tasks:
+    - name : Initiating the replica set
+      shell : mongo localhost --ssl --sslPEMKeyFile /etc/ssl/client.pem --sslCAFile /etc/ssl/ca.pem /home/ubuntu/mongo-rs.js
